@@ -1,176 +1,195 @@
+
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { COLORS as C } from "@/lib/data";
 
-export default function LoginForm() {
+type Role = "admin" | "student";
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [role, setRole]       = useState<Role>("student");
   const [surname, setSurname] = useState("");
-  const [matricNumber, setMatricNumber] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [matric, setMatric]   = useState("");
   const [focused, setFocused] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Simulate async login
-    await new Promise((r) => setTimeout(r, 1800));
-    setIsLoading(false);
-  };
+  async function handleSubmit() {
+    if (!surname.trim() || !matric.trim()) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1200));
+    setLoading(false);
+    router.push(role === "admin" ? "/admin" : "/student");
+  }
+
+  const inputBorder = (id: string) =>
+    focused === id
+      ? `0 0 0 2px ${C.accent}, 0 0 20px rgba(30,77,216,.25)`
+      : `0 0 0 1px ${C.border}`;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e] relative overflow-hidden">
-      {/* Ambient background orbs */}
-      <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-[#0d2157] opacity-40 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-[#0a1a4a] opacity-50 blur-[100px] pointer-events-none" />
-
+    <div
+      style={{
+        minHeight: "100vh", display: "flex",
+        alignItems: "center", justifyContent: "center",
+        background: C.bg, fontFamily: "Georgia,serif",
+        position: "relative", overflow: "hidden",
+      }}
+    >
+      {/* Ambient orbs */}
+      <div style={{ position: "absolute", top: "-10%", left: "-5%", width: 500, height: 500, borderRadius: "50%", background: "#0d2157", opacity: 0.4, filter: "blur(120px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: "-10%", right: "-5%", width: 400, height: 400, borderRadius: "50%", background: "#0a1a4a", opacity: 0.5, filter: "blur(100px)", pointerEvents: "none" }} />
       {/* Grid overlay */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "linear-gradient(#5b8dee 1px, transparent 1px), linear-gradient(90deg, #5b8dee 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.03, backgroundImage: "linear-gradient(#5b8dee 1px,transparent 1px),linear-gradient(90deg,#5b8dee 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
 
-      {/* Card */}
-      <div className="relative w-full max-w-md mx-4">
-        {/* Glow border effect */}
-        <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-[#2a4a9e] via-[#1a2d6b] to-transparent opacity-70 blur-[1px]" />
+      <div style={{ position: "relative", width: "100%", maxWidth: 420, margin: "0 16px" }}>
+        {/* Glow border */}
+        <div style={{ position: "absolute", inset: -1, borderRadius: 20, background: `linear-gradient(135deg,#2a4a9e,#1a2d6b,transparent)`, opacity: 0.7, filter: "blur(1px)" }} />
 
-        <div className="relative bg-[#0d1635] rounded-2xl p-10 shadow-[0_30px_80px_rgba(0,0,0,0.7)] border border-[#1e3070]/60 backdrop-blur-sm">
-         {/* Logo / Institution mark */}
-<div className="flex flex-col items-center mb-10">
-  <div className="mb-5">
-    <img
-      src="/laslogo.jpg"
-      alt="Lagos State University of Science and Technology"
-      width={80}
-      height={80}
-      className="rounded-full shadow-[0_0_30px_rgba(30,77,216,0.4)]"
-    />
-  </div>
-            <h1
-              className="text-white text-2xl font-bold tracking-tight"
-              style={{ fontFamily: "'Georgia', serif", letterSpacing: "-0.02em" }}
-            >
+        <div
+          style={{
+            position: "relative", background: C.card,
+            borderRadius: 20, padding: "36px 32px",
+            boxShadow: "0 30px 80px rgba(0,0,0,.7)",
+            border: `1px solid rgba(30,48,112,.6)`,
+          }}
+        >
+          {/* Logo */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 28 }}>
+            <div style={{ marginBottom: 14 }}>
+              <Image
+                src="/laslogo.jpg"
+                alt="Lagos State University of Science and Technology"
+                width={80}
+                height={80}
+                style={{ borderRadius: "50%", boxShadow: "0 0 30px rgba(30,77,216,.4)" }}
+              />
+            </div>
+            <h1 style={{ color: "white", fontSize: 22, fontWeight: "bold", margin: 0, letterSpacing: "-.02em" }}>
               Student Portal
             </h1>
-            <p className="text-[#4a6aad] text-sm mt-1 tracking-widest uppercase font-medium"
-              style={{ fontFamily: "monospace", fontSize: "0.65rem" }}
-            >
+            <p style={{ color: C.muted, fontSize: 10, marginTop: 4, fontFamily: "monospace", letterSpacing: ".14em", textTransform: "uppercase" }}>
               Academic Access System
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Surname field */}
-            <div className="group">
-              <label
-                htmlFor="surname"
-                className="block text-xs font-semibold text-[#4a6aad] uppercase tracking-widest mb-2"
-                style={{ fontFamily: "monospace" }}
+          {/* Role toggle */}
+          <div
+            style={{
+              display: "flex", background: "#080f28",
+              border: `1px solid ${C.border}`, borderRadius: 12,
+              padding: 4, marginBottom: 22, gap: 4,
+            }}
+          >
+            {(["student", "admin"] as Role[]).map((r) => (
+              <button
+                key={r}
+                onClick={() => setRole(r)}
+                style={{
+                  flex: 1, padding: "9px", borderRadius: 9, border: "none",
+                  background: role === r ? `linear-gradient(135deg,${C.accent},${C.accent2})` : "transparent",
+                  color: role === r ? "white" : C.muted,
+                  cursor: "pointer",
+                  fontWeight: role === r ? "bold" : "normal",
+                  fontSize: 13, fontFamily: "Georgia,serif",
+                  transition: "all .2s", textTransform: "capitalize",
+                }}
               >
-                Surname
-              </label>
-              <div
-                className={`relative rounded-xl transition-all duration-300 ${
-                  focused === "surname"
-                    ? "shadow-[0_0_0_2px_#1e4dd8,0_0_20px_rgba(30,77,216,0.25)]"
-                    : "shadow-[0_0_0_1px_#1e3070]"
-                }`}
-              >
-                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <circle cx="8" cy="5" r="3" stroke={focused === "surname" ? "#5b8dee" : "#2a4a9e"} strokeWidth="1.5" />
-                    <path d="M2 14c0-3.314 2.686-5 6-5s6 1.686 6 5" stroke={focused === "surname" ? "#5b8dee" : "#2a4a9e"} strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <input
-                  id="surname"
-                  type="text"
-                  value={surname}
-                  onChange={(e) => setSurname(e.target.value)}
-                  onFocus={() => setFocused("surname")}
-                  onBlur={() => setFocused(null)}
-                  placeholder="Enter your surname"
-                  required
-                  className="w-full bg-[#080f28] text-white placeholder-[#2a4060] pl-10 pr-4 py-3.5 rounded-xl outline-none text-sm font-medium transition-colors duration-200"
-                  style={{ fontFamily: "'Georgia', serif" }}
-                />
-              </div>
-            </div>
+                {r === "admin" ? "HOC / Admin" : "Student"}
+              </button>
+            ))}
+          </div>
 
-            {/* Matric Number field */}
-            <div className="group">
-              <label
-                htmlFor="matric"
-                className="block text-xs font-semibold text-[#4a6aad] uppercase tracking-widest mb-2"
-                style={{ fontFamily: "monospace" }}
-              >
-                Matric Number
-              </label>
-              <div
-                className={`relative rounded-xl transition-all duration-300 ${
-                  focused === "matric"
-                    ? "shadow-[0_0_0_2px_#1e4dd8,0_0_20px_rgba(30,77,216,0.25)]"
-                    : "shadow-[0_0_0_1px_#1e3070]"
-                }`}
-              >
-                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <rect x="2" y="2" width="12" height="12" rx="2" stroke={focused === "matric" ? "#5b8dee" : "#2a4a9e"} strokeWidth="1.5" />
-                    <path d="M5 6h6M5 9h4" stroke={focused === "matric" ? "#5b8dee" : "#2a4a9e"} strokeWidth="1.5" strokeLinecap="round" />
-                  </svg>
-                </div>
-                <input
-                  id="matric"
-                  type="text"
-                  value={matricNumber}
-                  onChange={(e) => setMatricNumber(e.target.value)}
-                  onFocus={() => setFocused("matric")}
-                  onBlur={() => setFocused(null)}
-                  placeholder="e.g. CSC/2021/001"
-                  required
-                  className="w-full bg-[#080f28] text-white placeholder-[#2a4060] pl-10 pr-4 py-3.5 rounded-xl outline-none text-sm font-medium transition-colors duration-200"
-                  style={{ fontFamily: "monospace" }}
-                />
-              </div>
-            </div>
-
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full relative overflow-hidden rounded-xl py-4 font-bold text-sm tracking-widest uppercase text-white transition-all duration-300 hover:shadow-[0_0_30px_rgba(30,77,216,0.5)] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+          {/* Surname */}
+          <div style={{ marginBottom: 16 }}>
+            <label
               style={{
-                fontFamily: "monospace",
-                background: "linear-gradient(135deg, #1e4dd8 0%, #0d2a8a 100%)",
+                display: "block", color: C.muted, fontSize: 11,
+                fontFamily: "monospace", letterSpacing: ".1em",
+                textTransform: "uppercase", marginBottom: 6,
               }}
             >
-              {/* Button shimmer */}
-              <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-700" />
+              Surname
+            </label>
+            <div style={{ borderRadius: 12, boxShadow: inputBorder("surname"), transition: "box-shadow .2s" }}>
+              <input
+                value={surname}
+                onChange={(e) => setSurname(e.target.value)}
+                onFocus={() => setFocused("surname")}
+                onBlur={() => setFocused(null)}
+                placeholder="Enter your surname"
+                style={{
+                  width: "100%", background: "#080f28", border: "none",
+                  outline: "none", borderRadius: 12, color: "white",
+                  padding: "13px 16px", fontSize: 13,
+                  fontFamily: "Georgia,serif", boxSizing: "border-box",
+                }}
+              />
+            </div>
+          </div>
 
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  Authenticating...
-                </span>
-              ) : (
-                "Sign In"
-              )}
-            </button>
-          </form>
+          {/* Matric */}
+          <div style={{ marginBottom: 16 }}>
+            <label
+              style={{
+                display: "block", color: C.muted, fontSize: 11,
+                fontFamily: "monospace", letterSpacing: ".1em",
+                textTransform: "uppercase", marginBottom: 6,
+              }}
+            >
+              Matric Number
+            </label>
+            <div style={{ borderRadius: 12, boxShadow: inputBorder("matric"), transition: "box-shadow .2s" }}>
+              <input
+                value={matric}
+                onChange={(e) => setMatric(e.target.value)}
+                onFocus={() => setFocused("matric")}
+                onBlur={() => setFocused(null)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                placeholder="e.g. CSC/2021/001"
+                style={{
+                  width: "100%", background: "#080f28", border: "none",
+                  outline: "none", borderRadius: 12, color: "white",
+                  padding: "13px 16px", fontSize: 13,
+                  fontFamily: "monospace", boxSizing: "border-box",
+                }}
+              />
+            </div>
+          </div>
 
-          {/* Footer */}
-          <p className="text-center text-[#2a4060] text-xs mt-8" style={{ fontFamily: "monospace" }}>
+          {error && (
+            <div style={{ color: C.red, fontSize: 12, fontFamily: "monospace", marginBottom: 10 }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            style={{
+              width: "100%", padding: "14px", borderRadius: 12, border: "none",
+              background: `linear-gradient(135deg,${C.accent},${C.accent2})`,
+              color: "white", fontWeight: "bold", fontSize: 13,
+              fontFamily: "monospace", letterSpacing: ".08em",
+              textTransform: "uppercase", cursor: "pointer", marginTop: 4,
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? "Signing in…" : "Sign In"}
+          </button>
+
+          <p style={{ textAlign: "center", color: C.dimmed, fontSize: 11, marginTop: 20, fontFamily: "monospace" }}>
             Having trouble?{" "}
             <a href="https://wa.me/2349130222183" className="text-[#4a6aad] hover:text-[#5b8dee] transition-colors underline underline-offset-2">
-              Contact HOC
-            </a>
+               Contact HOC
+             </a>
           </p>
         </div>
       </div>

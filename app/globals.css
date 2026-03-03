@@ -124,3 +124,39 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  background-color: #08111f;
+  color: #c8d8f0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080f28;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a2e50;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1e4dd8;
+}

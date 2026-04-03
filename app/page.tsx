@@ -1,10 +1,15 @@
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { COLORS as C } from "@/lib/data";
+import {
+  apiStudentLogin,
+  apiAdminLogin,
+  saveStudentSession,
+  saveAdminSession,
+} from "@/lib/api";
 
 type Role = "admin" | "student";
 
@@ -13,26 +18,76 @@ export default function LoginPage() {
   const [role, setRole]       = useState<Role>("student");
   const [surname, setSurname] = useState("");
   const [matric, setMatric]   = useState("");
+  const [adminKey, setAdminKey] = useState("");
   const [focused, setFocused] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
 
   async function handleSubmit() {
-    if (!surname.trim() || !matric.trim()) {
-      setError("Please fill in all fields.");
-      return;
-    }
     setError("");
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    router.push(role === "admin" ? "/admin" : "/student");
+
+    if (role === "student") {
+      if (!surname.trim() || !matric.trim()) {
+        setError("Please fill in all fields.");
+        return;
+      }
+      setLoading(true);
+      try {
+        const student = await apiStudentLogin(surname.trim(), matric.trim());
+        saveStudentSession(student);
+        router.push("/student");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Login failed. Check your details.");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Admin login
+      if (!adminKey.trim()) {
+        setError("Please enter your admin key.");
+        return;
+      }
+      setLoading(true);
+      try {
+        const ok = await apiAdminLogin(adminKey.trim());
+        if (!ok) throw new Error("Invalid admin key.");
+        saveAdminSession(adminKey.trim());
+        router.push("/admin");
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Admin login failed.");
+      } finally {
+        setLoading(false);
+      }
+    }
   }
 
   const inputBorder = (id: string) =>
     focused === id
       ? `0 0 0 2px ${C.accent}, 0 0 20px rgba(30,77,216,.25)`
       : `0 0 0 1px ${C.border}`;
+
+  const inputStyle = {
+    width: "100%",
+    background: "#080f28",
+    border: "none",
+    outline: "none",
+    borderRadius: 12,
+    color: "white",
+    padding: "13px 16px",
+    fontSize: 13,
+    fontFamily: "Georgia,serif",
+    boxSizing: "border-box" as const,
+  };
+
+  const labelStyle = {
+    display: "block",
+    color: C.muted,
+    fontSize: 11,
+    fontFamily: "monospace",
+    letterSpacing: ".1em",
+    textTransform: "uppercase" as const,
+    marginBottom: 6,
+  };
 
   return (
     <div
@@ -91,7 +146,7 @@ export default function LoginPage() {
             {(["student", "admin"] as Role[]).map((r) => (
               <button
                 key={r}
-                onClick={() => setRole(r)}
+                onClick={() => { setRole(r); setError(""); }}
                 style={{
                   flex: 1, padding: "9px", borderRadius: 9, border: "none",
                   background: role === r ? `linear-gradient(135deg,${C.accent},${C.accent2})` : "transparent",
@@ -107,66 +162,61 @@ export default function LoginPage() {
             ))}
           </div>
 
-          {/* Surname */}
-          <div style={{ marginBottom: 16 }}>
-            <label
-              style={{
-                display: "block", color: C.muted, fontSize: 11,
-                fontFamily: "monospace", letterSpacing: ".1em",
-                textTransform: "uppercase", marginBottom: 6,
-              }}
-            >
-              Surname
-            </label>
-            <div style={{ borderRadius: 12, boxShadow: inputBorder("surname"), transition: "box-shadow .2s" }}>
-              <input
-                value={surname}
-                onChange={(e) => setSurname(e.target.value)}
-                onFocus={() => setFocused("surname")}
-                onBlur={() => setFocused(null)}
-                placeholder="Enter your surname"
-                style={{
-                  width: "100%", background: "#080f28", border: "none",
-                  outline: "none", borderRadius: 12, color: "white",
-                  padding: "13px 16px", fontSize: 13,
-                  fontFamily: "Georgia,serif", boxSizing: "border-box",
-                }}
-              />
-            </div>
-          </div>
+          {role === "student" ? (
+            <>
+              {/* Surname */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>Surname</label>
+                <div style={{ borderRadius: 12, boxShadow: inputBorder("surname"), transition: "box-shadow .2s" }}>
+                  <input
+                    value={surname}
+                    onChange={(e) => setSurname(e.target.value)}
+                    onFocus={() => setFocused("surname")}
+                    onBlur={() => setFocused(null)}
+                    placeholder="Enter your surname"
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
 
-          {/* Matric */}
-          <div style={{ marginBottom: 16 }}>
-            <label
-              style={{
-                display: "block", color: C.muted, fontSize: 11,
-                fontFamily: "monospace", letterSpacing: ".1em",
-                textTransform: "uppercase", marginBottom: 6,
-              }}
-            >
-              Matric Number
-            </label>
-            <div style={{ borderRadius: 12, boxShadow: inputBorder("matric"), transition: "box-shadow .2s" }}>
-              <input
-                value={matric}
-                onChange={(e) => setMatric(e.target.value)}
-                onFocus={() => setFocused("matric")}
-                onBlur={() => setFocused(null)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                placeholder="e.g. CSC/2021/001"
-                style={{
-                  width: "100%", background: "#080f28", border: "none",
-                  outline: "none", borderRadius: 12, color: "white",
-                  padding: "13px 16px", fontSize: 13,
-                  fontFamily: "monospace", boxSizing: "border-box",
-                }}
-              />
+              {/* Matric */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>Matric Number</label>
+                <div style={{ borderRadius: 12, boxShadow: inputBorder("matric"), transition: "box-shadow .2s" }}>
+                  <input
+                    value={matric}
+                    onChange={(e) => setMatric(e.target.value)}
+                    onFocus={() => setFocused("matric")}
+                    onBlur={() => setFocused(null)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    placeholder="e.g. 250303010001"
+                    style={{ ...inputStyle, fontFamily: "monospace" }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            /* Admin key */
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Admin Key</label>
+              <div style={{ borderRadius: 12, boxShadow: inputBorder("adminKey"), transition: "box-shadow .2s" }}>
+                <input
+                  type="password"
+                  value={adminKey}
+                  onChange={(e) => setAdminKey(e.target.value)}
+                  onFocus={() => setFocused("adminKey")}
+                  onBlur={() => setFocused(null)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  placeholder="Enter admin key"
+                  style={{ ...inputStyle, fontFamily: "monospace" }}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {error && (
             <div style={{ color: C.red, fontSize: 12, fontFamily: "monospace", marginBottom: 10 }}>
-              {error}
+              ✕ {error}
             </div>
           )}
 
@@ -178,8 +228,8 @@ export default function LoginPage() {
               background: `linear-gradient(135deg,${C.accent},${C.accent2})`,
               color: "white", fontWeight: "bold", fontSize: 13,
               fontFamily: "monospace", letterSpacing: ".08em",
-              textTransform: "uppercase", cursor: "pointer", marginTop: 4,
-              opacity: loading ? 0.7 : 1,
+              textTransform: "uppercase", cursor: loading ? "not-allowed" : "pointer",
+              marginTop: 4, opacity: loading ? 0.7 : 1,
             }}
           >
             {loading ? "Signing in…" : "Sign In"}

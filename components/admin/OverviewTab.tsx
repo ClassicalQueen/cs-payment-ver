@@ -1,61 +1,89 @@
 "use client";
+// components/admin/OverviewTab.tsx
 
 import StatCard from "@/components/shared/StatCard";
 import Badge from "@/components/shared/Badge";
-import { PaymentEntry, PaymentList } from "@/lib/types";
 import { COLORS as C } from "@/lib/data";
+import { PaymentRecord, PaymentIdRecord } from "@/lib/api";
 
 interface OverviewTabProps {
-  entries: PaymentEntry[];
-  lists: PaymentList[];
+  payments: PaymentRecord[];
+  paymentIds: PaymentIdRecord[];
   onViewAll: () => void;
 }
 
-const TABLE_HEADERS = ["Student", "Matric", "List", "Status", "Entered At"];
+export default function OverviewTab({ payments, paymentIds, onViewAll }: OverviewTabProps) {
+  const total    = payments.length;
+  const approved = payments.filter((p) => p.status === "approved").length;
+  const pending  = payments.filter((p) => p.status === "pending").length;
+  const rejected = payments.filter((p) => p.status === "rejected").length;
 
-export default function OverviewTab({ entries, lists, onViewAll }: OverviewTabProps) {
-  const verified = entries.filter((e) => e.isVerified).length;
-  const pending = entries.filter((e) => !e.isVerified).length;
+  const recent = payments.slice(0, 6);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
         <h2 style={{ color: "#e0ecff", fontSize: 20, fontWeight: "bold", margin: 0 }}>
-          Admin Overview
+          Overview
         </h2>
         <p style={{ color: C.muted, fontSize: 13, marginTop: 4, fontFamily: "monospace" }}>
-          Manage payment lists and verify student entries.
+          CS Department · 100 Level · Payment Verification Dashboard
         </p>
       </div>
 
-      {/* Stat cards */}
+      {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
-        <StatCard label="Payment Lists" value={lists.length} sub="Active records" color={C.accent} />
-        <StatCard label="Total Entries" value={entries.length} sub="Across all lists" color="#7c3aed" />
-        <StatCard label="Verified" value={verified} sub={`${Math.round((verified / entries.length) * 100) || 0}% of entries`} color={C.green} />
-        <StatCard label="Pending" value={pending} sub="Awaiting review" color={C.yellow} />
+        <StatCard label="Total Submissions" value={total}    sub="All students"      color={C.accent} />
+        <StatCard label="Approved"          value={approved} sub="Verified by HOC"   color={C.green}  />
+        <StatCard label="Pending"           value={pending}  sub="Awaiting review"   color={C.yellow} />
+        <StatCard label="Rejected"          value={rejected} sub="Needs attention"   color={C.red}    />
       </div>
 
-      {/* Recent entries table */}
+      {/* Active payment IDs */}
+      {paymentIds.filter(p => p.is_active).length > 0 && (
+        <div
+          style={{
+            background: C.card, border: `1px solid ${C.border}`,
+            borderRadius: 14, padding: "16px 20px",
+          }}
+        >
+          <div style={{ color: "#e0ecff", fontWeight: "bold", fontSize: 14, marginBottom: 12 }}>
+            Active Payment IDs
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {paymentIds.filter(p => p.is_active).map((pid) => (
+              <div
+                key={pid.id}
+                style={{
+                  background: "rgba(30,77,216,.1)", border: "1px solid rgba(30,77,216,.25)",
+                  borderRadius: 8, padding: "6px 14px",
+                  fontFamily: "monospace", fontSize: 12, color: "#a0c4ff",
+                }}
+              >
+                <span style={{ fontWeight: "bold" }}>{pid.payment_id}</span>
+                {pid.description && <span style={{ color: C.muted, marginLeft: 8 }}>— {pid.description}</span>}
+                {pid.amount && <span style={{ color: C.green, marginLeft: 8 }}>₦{pid.amount.toLocaleString()}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent submissions */}
       <div
         style={{
-          background: C.card,
-          border: `1px solid ${C.border}`,
-          borderRadius: 14,
-          overflow: "hidden",
+          background: C.card, border: `1px solid ${C.border}`,
+          borderRadius: 14, overflow: "hidden",
         }}
       >
         <div
           style={{
-            padding: "14px 20px",
-            borderBottom: `1px solid ${C.border2}`,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            padding: "14px 20px", borderBottom: `1px solid ${C.border2}`,
+            display: "flex", justifyContent: "space-between",
           }}
         >
           <span style={{ color: "#e0ecff", fontWeight: "bold", fontSize: 14 }}>
-            Recent Entries
+            Recent Submissions
           </span>
           <button
             onClick={onViewAll}
@@ -69,42 +97,49 @@ export default function OverviewTab({ entries, lists, onViewAll }: OverviewTabPr
           </button>
         </div>
 
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${C.border2}` }}>
-              {TABLE_HEADERS.map((h) => (
-                <th
-                  key={h}
-                  style={{
-                    textAlign: "left", padding: "10px 20px",
-                    color: C.dimmed, fontSize: 10, fontFamily: "monospace",
-                    letterSpacing: ".1em", textTransform: "uppercase", fontWeight: "normal",
-                  }}
-                >
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {entries.slice(0, 5).map((e, i) => (
-              <tr
-                key={e.id}
-                style={{ borderBottom: i < 4 ? `1px solid ${C.border2}` : "none" }}
-                onMouseEnter={(ev) => (ev.currentTarget.style.background = "#0a1530")}
-                onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}
-              >
-                <td style={{ padding: "12px 20px", color: C.text, fontSize: 13 }}>{e.student}</td>
-                <td style={{ padding: "12px 20px", color: C.accent, fontSize: 12, fontFamily: "monospace" }}>{e.matric}</td>
-                <td style={{ padding: "12px 20px", color: C.muted, fontSize: 11, fontFamily: "monospace" }}>
-                  {lists.find((l) => l.id === e.paymentId)?.name || "—"}
-                </td>
-                <td style={{ padding: "12px 20px" }}><Badge verified={e.isVerified} /></td>
-                <td style={{ padding: "12px 20px", color: C.muted, fontSize: 11, fontFamily: "monospace" }}>{e.enteredAt}</td>
+        {recent.length === 0 ? (
+          <div style={{ padding: 40, textAlign: "center", color: C.dimmed, fontFamily: "monospace", fontSize: 13 }}>
+            No submissions yet.
+          </div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.border2}` }}>
+                {["Student", "Matric", "Payment ID", "Account Name", "Status", "Date"].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: "left", padding: "10px 18px",
+                      color: C.dimmed, fontSize: 10, fontFamily: "monospace",
+                      letterSpacing: ".1em", textTransform: "uppercase", fontWeight: "normal",
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recent.map((p, i) => (
+                <tr
+                  key={p.id}
+                  style={{ borderBottom: i < recent.length - 1 ? `1px solid ${C.border2}` : "none" }}
+                  onMouseEnter={(ev) => (ev.currentTarget.style.background = "#0a1530")}
+                  onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}
+                >
+                  <td style={{ padding: "12px 18px", color: C.text, fontSize: 13 }}>{p.full_name}</td>
+                  <td style={{ padding: "12px 18px", color: C.accent, fontSize: 12, fontFamily: "monospace" }}>{p.matric_no}</td>
+                  <td style={{ padding: "12px 18px", color: C.muted, fontSize: 12, fontFamily: "monospace" }}>{p.payment_id}</td>
+                  <td style={{ padding: "12px 18px", color: C.muted, fontSize: 12, fontFamily: "monospace" }}>{p.account_name}</td>
+                  <td style={{ padding: "12px 18px" }}><Badge verified={p.status === "approved"} status={p.status} /></td>
+                  <td style={{ padding: "12px 18px", color: C.muted, fontSize: 11, fontFamily: "monospace" }}>
+                    {new Date(p.submitted_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

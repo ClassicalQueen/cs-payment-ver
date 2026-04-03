@@ -1,56 +1,64 @@
 "use client";
 
 import { useState } from "react";
-import { PaymentEntry } from "@/lib/types";
-import { COLORS as C, STUDENT_USER, PAYMENT_LISTS } from "@/lib/data";
-import { formatDate } from "@/lib/utils";
+import { COLORS as C } from "@/lib/data";
+import { apiSubmitPayment, PaymentRecord, StudentUser } from "@/lib/api";
 
 interface VerifyLinkTabProps {
-  entries: PaymentEntry[];
-  onAddEntry: (entry: PaymentEntry) => void;
+  student: StudentUser;
+  payments: PaymentRecord[];
+  onPaymentAdded: (payment: PaymentRecord) => void;
 }
 
-type VerifyStatus = { ok: boolean; msg: string } | null;
+export default function VerifyLinkTab({ student, payments, onPaymentAdded }: VerifyLinkTabProps) {
+  const [accountName, setAccountName] = useState("");
+  const [paymentId,   setPaymentId]   = useState("");
+  const [proof,       setProof]       = useState<File | null>(null);
+  const [loading,     setLoading]     = useState(false);
+  const [status,      setStatus]      = useState<{ ok: boolean; msg: string } | null>(null);
 
-export default function VerifyLinkTab({ entries, onAddEntry }: VerifyLinkTabProps) {
-  const [verifyLink, setVerifyLink] = useState("");
-  const [nameOnAccount, setNameOnAccount] = useState("");
-  const [status, setStatus] = useState<VerifyStatus>(null);
-
-  function handleSubmit() {
-    if (!verifyLink.trim() || !nameOnAccount.trim()) {
+  async function handleSubmit() {
+    if (!accountName.trim() || !paymentId.trim()) {
       setStatus({ ok: false, msg: "Please fill in all fields." });
       return;
     }
 
-    const found = PAYMENT_LISTS.find((r) => verifyLink.trim() === r.id);
-
-    if (found) {
-      const alreadyIn = entries.some(
-        (e) => e.paymentId === found.id && e.matric === STUDENT_USER.matric
-      );
-      if (alreadyIn) {
-        setStatus({ ok: false, msg: "You have already submitted for this list." });
-      } else {
-        const newEntry: PaymentEntry = {
-          id: "e" + Date.now(),
-          paymentId: found.id,
-          student: STUDENT_USER.name,
-          matric: STUDENT_USER.matric,
-          nameOnAccount,
-          isVerified: false,
-          enteredAt: formatDate(new Date()),
-        };
-        onAddEntry(newEntry);
-        setStatus({ ok: true, msg: `✓ Successfully added to "${found.name}". Awaiting HOC verification.` });
-        setVerifyLink("");
-        setNameOnAccount("");
-      }
-    } else {
-      setStatus({ ok: false, msg: "✗ Invalid record ID. Please check and try again." });
+    // Check for duplicate submission locally before hitting server
+    const duplicate = payments.find(
+      (p) => p.payment_id.toUpperCase() === paymentId.trim().toUpperCase()
+    );
+    if (duplicate) {
+      setStatus({ ok: false, msg: `You already submitted for this Payment ID. Status: ${duplicate.status.toUpperCase()}.` });
+      return;
     }
 
-    setTimeout(() => setStatus(null), 4000);
+    setLoading(true);
+    setStatus(null);
+
+    try {
+      const newPayment = await apiSubmitPayment({
+        matric_no:    student.matric_no,
+        full_name:    student.full_name,
+        account_name: accountName.trim(),
+        payment_id:   paymentId.trim(),
+        proof:        proof,
+      });
+
+      onPaymentAdded(newPayment);
+      setStatus({ ok: true, msg: "✓ Payment submitted successfully! Awaiting HOC verification." });
+      setAccountName("");
+      setPaymentId("");
+      setProof(null);
+    } catch (err: unknown) {
+      setStatus({
+        ok: false,
+        msg: err instanceof Error ? err.message : "Submission failed. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+
+    setTimeout(() => setStatus(null), 5000);
   }
 
   const fieldStyle = {
@@ -84,7 +92,7 @@ export default function VerifyLinkTab({ entries, onAddEntry }: VerifyLinkTabProp
           Verify a Payment Link
         </h2>
         <p style={{ color: C.muted, fontSize: 13, marginTop: 4, fontFamily: "monospace" }}>
-          Your HOC shared a record ID. Paste it below and fill in your details.
+          Your HOC shared a Payment ID. Fill in your details to submit.
         </p>
       </div>
 
@@ -94,43 +102,35 @@ export default function VerifyLinkTab({ entries, onAddEntry }: VerifyLinkTabProp
           borderRadius: 14, padding: 24,
         }}
       >
-        {/* Auto-filled fields */}
+        {/* Auto-filled: Full Name */}
         <label style={labelStyle}>Student Full Name (auto)</label>
-        <div
-          style={{
-            ...fieldStyle, color: C.muted,
-            fontFamily: "monospace", marginBottom: 16,
-          }}
-        >
-          {STUDENT_USER.name}
+        <div style={{ ...fieldStyle, color: C.muted, fontFamily: "monospace" }}>
+          {student.full_name}
         </div>
 
+        {/* Auto-filled: Matric */}
         <label style={labelStyle}>Matric Number (auto)</label>
-        <div
-          style={{
-            ...fieldStyle, color: C.muted,
-            fontFamily: "monospace", marginBottom: 16,
-          }}
-        >
-          {STUDENT_USER.matric}
+        <div style={{ ...fieldStyle, color: C.muted, fontFamily: "monospace" }}>
+          {student.matric_no}
         </div>
 
-        {/* User inputs */}
+        {/* Name on Account */}
         <label style={labelStyle}>Name on Account *</label>
         <input
-          value={nameOnAccount}
-          onChange={(e) => setNameOnAccount(e.target.value)}
+          value={accountName}
+          onChange={(e) => setAccountName(e.target.value)}
           placeholder="Name on bank account used for payment"
           style={fieldStyle}
         />
 
+        {/* Payment ID */}
         <label style={labelStyle}>Payment ID (from HOC message) *</label>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <input
-            value={verifyLink}
-            onChange={(e) => setVerifyLink(e.target.value)}
+            value={paymentId}
+            onChange={(e) => setPaymentId(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            placeholder="e.g. pl-001"
+            placeholder="e.g. LASU-CS-A3F9B2"
             style={{
               flex: 1, background: "#080f28",
               border: `1px solid ${status?.ok === false ? C.red : C.border}`,
@@ -139,42 +139,85 @@ export default function VerifyLinkTab({ entries, onAddEntry }: VerifyLinkTabProp
               outline: "none", fontFamily: "monospace",
             }}
           />
-          <button
-            onClick={handleSubmit}
-            style={{
-              background: `linear-gradient(135deg,${C.accent},${C.accent2})`,
-              border: "none", borderRadius: 10, padding: "0 24px",
-              cursor: "pointer", color: "white",
-              fontWeight: "bold", fontSize: 13, fontFamily: "monospace",
-            }}
-          >
-            Submit
-          </button>
         </div>
 
+        {/* Upload Proof */}
+        <label style={labelStyle}>Payment Proof (optional — screenshot / receipt)</label>
+        <div
+          style={{
+            marginBottom: 20,
+            border: `1px dashed ${C.border}`,
+            borderRadius: 10,
+            padding: "16px",
+            textAlign: "center",
+            background: "#080f28",
+          }}
+        >
+          <input
+            id="proof-upload"
+            type="file"
+            accept="image/*,.pdf"
+            style={{ display: "none" }}
+            onChange={(e) => setProof(e.target.files?.[0] || null)}
+          />
+          <label
+            htmlFor="proof-upload"
+            style={{
+              cursor: "pointer",
+              color: proof ? C.green : C.muted,
+              fontSize: 12,
+              fontFamily: "monospace",
+            }}
+          >
+            {proof ? `✓ ${proof.name}` : "Click to upload proof (image or PDF)"}
+          </label>
+          {proof && (
+            <button
+              onClick={() => setProof(null)}
+              style={{
+                display: "block", margin: "8px auto 0",
+                background: "transparent", border: "none",
+                color: C.red, cursor: "pointer",
+                fontSize: 11, fontFamily: "monospace",
+              }}
+            >
+              ✕ Remove
+            </button>
+          )}
+        </div>
+
+        {/* Status message */}
         {status && (
-          <div style={{ color: status.ok ? C.green : C.red, fontSize: 12, fontFamily: "monospace", marginBottom: 8 }}>
+          <div
+            style={{
+              color: status.ok ? C.green : C.red,
+              fontSize: 12, fontFamily: "monospace",
+              marginBottom: 14,
+              padding: "10px 14px",
+              borderRadius: 8,
+              background: status.ok ? "rgba(34,197,94,.08)" : "rgba(239,68,68,.08)",
+              border: `1px solid ${status.ok ? "rgba(34,197,94,.2)" : "rgba(239,68,68,.2)"}`,
+            }}
+          >
             {status.msg}
           </div>
         )}
 
-        {/* Helper — shows available IDs in dev/demo */}
-        <div
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
           style={{
-            marginTop: 18, padding: "12px 16px",
-            background: "rgba(30,77,216,.08)",
-            border: "1px solid rgba(30,77,216,.2)", borderRadius: 10,
+            width: "100%",
+            background: `linear-gradient(135deg,${C.accent},${C.accent2})`,
+            border: "none", borderRadius: 10, padding: "13px",
+            cursor: loading ? "not-allowed" : "pointer",
+            color: "white", fontWeight: "bold",
+            fontSize: 13, fontFamily: "monospace",
+            opacity: loading ? 0.7 : 1,
           }}
         >
-          <div style={{ color: "#7aa8ff", fontSize: 12, fontFamily: "monospace", marginBottom: 4 }}>
-            ℹ Available record IDs (demo)
-          </div>
-          {PAYMENT_LISTS.map((l) => (
-            <div key={l.id} style={{ color: C.muted, fontSize: 11, fontFamily: "monospace" }}>
-              {l.id} → {l.name}
-            </div>
-          ))}
-        </div>
+          {loading ? "Submitting…" : "Submit Payment"}
+        </button>
       </div>
     </div>
   );

@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/shared/Sidebar";
 import DashboardTab from "@/components/student/DashboardTab";
 import VerifyLinkTab from "@/components/student/VerifyLinkTab";
 import HistoryTab from "@/components/student/HistoryTab";
 import AccountTab from "@/components/student/AccountTab";
-import { PaymentEntry, TabSection } from "@/lib/types";
-import { COLORS as C, INITIAL_ENTRIES, STUDENT_USER } from "@/lib/data";
+import { TabSection } from "@/lib/types";
+import { COLORS as C } from "@/lib/data";
+import {
+  getStudentSession,
+  clearSession,
+  apiGetMyPayments,
+  PaymentRecord,
+  StudentUser,
+} from "@/lib/api";
 
-// ── Icons ──────────────────────────────────────────────────────────────────────
+// ── Icons ───────────────────────────────────────────────────────────────────
 const GridIcon  = () => <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="2" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="2" y="9" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><rect x="9" y="9" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/></svg>;
 const LinkIcon  = () => <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M6.5 9.5a3.5 3.5 0 005 0l2-2a3.5 3.5 0 00-5-5L7 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M9.5 6.5a3.5 3.5 0 00-5 0l-2 2a3.5 3.5 0 005 5L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
 const ListIcon  = () => <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M5 4h8M5 8h8M5 12h8M2 4h.5M2 8h.5M2 12h.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>;
@@ -20,7 +27,7 @@ const MenuIcon  = () => <svg width="18" height="18" fill="none" viewBox="0 0 18 
 const TABS: TabSection[] = [
   {
     section: "Main",
-    items: [{ id: "dashboard", label: "Dashboard",   icon: <GridIcon /> }],
+    items: [{ id: "dashboard", label: "Dashboard", icon: <GridIcon /> }],
   },
   {
     section: "Payments",
@@ -39,17 +46,50 @@ export default function StudentPage() {
   const router = useRouter();
   const [tab, setTab]           = useState("dashboard");
   const [sideOpen, setSideOpen] = useState(true);
-  const [entries, setEntries]   = useState<PaymentEntry[]>(INITIAL_ENTRIES);
+  const [student, setStudent]   = useState<StudentUser | null>(null);
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [loading, setLoading]   = useState(true);
 
-  const myEntries = entries.filter((e) => e.matric === STUDENT_USER.matric);
+  // Auth guard + load student + load payments
+  useEffect(() => {
+    const s = getStudentSession();
+    if (!s) {
+      router.push("/");
+      return;
+    }
+    setStudent(s);
+    loadPayments(s.matric_no);
+  }, [router]);
 
-  function handleAddEntry(entry: PaymentEntry) {
-    setEntries((prev) => [...prev, entry]);
+  async function loadPayments(matric_no: string) {
+    setLoading(true);
+    try {
+      const data = await apiGetMyPayments(matric_no);
+      setPayments(data);
+    } catch {
+      // silently fail on initial load
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handlePaymentAdded(newPayment: PaymentRecord) {
+    setPayments((prev) => [newPayment, ...prev]);
   }
 
   function handleLogout() {
+    clearSession();
     router.push("/");
   }
+
+  if (!student) return null; // waiting for auth check
+
+  const sidebarUser = {
+    name: student.full_name,
+    matric: student.matric_no,
+    dept: "Computer Science",
+    level: "100 Level",
+  };
 
   return (
     <div
@@ -61,7 +101,7 @@ export default function StudentPage() {
     >
       {sideOpen && (
         <Sidebar
-          user={STUDENT_USER}
+          user={sidebarUser}
           isAdmin={false}
           tabs={TABS}
           activeTab={tab}
@@ -87,7 +127,6 @@ export default function StudentPage() {
             <MenuIcon />
           </button>
           <div style={{ flex: 1 }} />
-          {/* Student badge */}
           <div
             style={{
               display: "flex", alignItems: "center", gap: 6,
@@ -105,18 +144,36 @@ export default function StudentPage() {
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-          {tab === "dashboard" && (
-            <DashboardTab
-              myEntries={myEntries}
-              onViewAll={() => setTab("history")}
-              onVerifySuccess={handleAddEntry}
-            />
+          {loading ? (
+            <div style={{ color: C.muted, fontFamily: "monospace", fontSize: 13 }}>
+              Loading…
+            </div>
+          ) : (
+            <>
+              {tab === "dashboard" && (
+                <DashboardTab
+                  student={student}
+                  myPayments={payments}
+                  onViewAll={() => setTab("history")}
+                  onPaymentAdded={handlePaymentAdded}
+                />
+              )}
+              {tab === "verify" && (
+                <VerifyLinkTab
+                  student={student}
+                  payments={payments}
+                  onPaymentAdded={handlePaymentAdded}
+                />
+              )}
+              {tab === "history" && (
+                <HistoryTab
+                  myPayments={payments}
+                  onRefresh={() => loadPayments(student.matric_no)}
+                />
+              )}
+              {tab === "account" && <AccountTab student={student} />}
+            </>
           )}
-          {tab === "verify" && (
-            <VerifyLinkTab entries={entries} onAddEntry={handleAddEntry} />
-          )}
-          {tab === "history" && <HistoryTab myEntries={myEntries} />}
-          {tab === "account" && <AccountTab />}
         </div>
       </main>
     </div>

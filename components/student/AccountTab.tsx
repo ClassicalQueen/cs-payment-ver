@@ -1,14 +1,20 @@
 "use client";
+// components/student/AccountTab.tsx
 
 import Avatar from "@/components/shared/Avatar";
-import { COLORS as C, STUDENT_USER } from "@/lib/data";
+import { COLORS as C } from "@/lib/data";
+import { StudentUser } from "@/lib/api";
 
-export default function AccountTab() {
+interface AccountTabProps {
+  student: StudentUser;
+}
+
+export default function AccountTab({ student }: AccountTabProps) {
   const fields: [string, string][] = [
-    ["Full Name",      STUDENT_USER.name],
-    ["Matric Number",  STUDENT_USER.matric],
-    ["Department",     STUDENT_USER.dept],
-    ["Level",          STUDENT_USER.level],
+    ["Full Name",     student.full_name],
+    ["Matric Number", student.matric_no],
+    ["Department",    "Computer Science"],
+    ["Level",         "100 Level"],
   ];
 
   return (
@@ -23,7 +29,6 @@ export default function AccountTab() {
           borderRadius: 14, padding: 24,
         }}
       >
-        {/* Profile header */}
         <div
           style={{
             display: "flex", alignItems: "center", gap: 16,
@@ -31,21 +36,20 @@ export default function AccountTab() {
             borderBottom: `1px solid ${C.border2}`,
           }}
         >
-          <Avatar name={STUDENT_USER.name} size={56} />
+          <Avatar name={student.full_name} size={56} />
           <div>
             <div style={{ color: "#e0ecff", fontWeight: "bold", fontSize: 18 }}>
-              {STUDENT_USER.name}
+              {student.full_name}
             </div>
             <div style={{ color: C.muted, fontSize: 13, fontFamily: "monospace" }}>
-              {STUDENT_USER.matric}
+              {student.matric_no}
             </div>
             <div style={{ color: C.dimmed, fontSize: 12, marginTop: 2 }}>
-              {STUDENT_USER.dept} · {STUDENT_USER.level}
+              Computer Science · 100 Level
             </div>
           </div>
         </div>
 
-        {/* Field rows */}
         {fields.map(([label, value]) => (
           <div
             key={label}
@@ -54,9 +58,7 @@ export default function AccountTab() {
               padding: "12px 0", borderBottom: `1px solid ${C.border2}`,
             }}
           >
-            <span style={{ color: C.muted, fontSize: 13, fontFamily: "monospace" }}>
-              {label}
-            </span>
+            <span style={{ color: C.muted, fontSize: 13, fontFamily: "monospace" }}>{label}</span>
             <span style={{ color: C.text, fontSize: 13 }}>{value}</span>
           </div>
         ))}

@@ -24,8 +24,8 @@ export const STUDENT_USER: StudentUser = {
 };
 
 export const ADMIN_USER: AdminUser = {
-  name: "DR. ADEBAYO OSEI",
-  role: "HOC — CS DEPT",
+  name: "Ayara Michael Udeme",
+  role: "HOC — CS DEPT 100L",
   dept: "Computer Science",
 };
 
